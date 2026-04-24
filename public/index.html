@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Domino Online</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="screenLobby" class="screen active">
+    <div class="lobby-wrap">
+      <div class="logo">
+        <div id="logoPiece" class="logo-piece" aria-hidden="true"></div>
+        <h1>Domino</h1>
+        <p class="tagline">Jogue com seus amigos</p>
+      </div>
+      <div class="card">
+        <input id="inputName" type="text" placeholder="Seu apelido" maxlength="16" autocomplete="off">
+        <button id="btnCreate" class="btn btn-gold">Criar Sala</button>
+        <div class="or-divider"><span>ou</span></div>
+        <div class="join-row">
+          <input id="inputCode" type="text" placeholder="Codigo" maxlength="4" autocomplete="off">
+          <button id="btnJoin" class="btn btn-outline">Entrar</button>
+        </div>
+        <p id="lobbyErr" class="err-msg"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="screenWaiting" class="screen">
+    <div class="waiting-wrap">
+      <h2>Sala <span id="displayCode" class="code-badge"></span></h2>
+      <button id="btnCopy" class="btn btn-outline btn-sm">Copiar codigo</button>
+      <div id="waitingPlayers" class="waiting-players"></div>
+
+      <div id="configSection" class="config-section hidden">
+        <div class="config-label">Modo de jogo</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" data-mode="classic">Classico</button>
+          <button class="mode-btn" data-mode="baiano">Baiano</button>
+          <button id="btnRules" class="btn btn-ghost btn-sm">Ver regras</button>
+        </div>
+        <div id="baianoConfig" class="baiano-cfg hidden">
+          <label class="cfg-label">Meta <input type="number" id="inputPecas" min="1" max="20" value="6" class="cfg-input"> pecas para vencer</label>
+        </div>
+        <div class="cfg-row">
+          <label class="cfg-label">Tempo por jogada <input type="number" id="inputTimer" min="0" max="120" value="0" class="cfg-input"> seg <span class="cfg-hint">(0 = sem limite)</span></label>
+        </div>
+      </div>
+
+      <button id="btnRulesGuest" class="btn btn-ghost btn-sm hidden">Ver regras</button>
+
+      <p id="waitingMsg" class="waiting-hint">Aguardando jogadores... (minimo 2)</p>
+      <button id="btnStart" class="btn btn-gold hidden">Iniciar Jogo</button>
+    </div>
+  </div>
+
+  <div id="screenGame" class="screen">
+    <div class="game-layout">
+      <div id="slotTop" class="player-slot slot-top"></div>
+
+      <div class="game-middle">
+        <div id="slotLeft" class="player-slot slot-side"></div>
+
+        <div class="area-board">
+          <div id="pecasBar" class="pecas-bar hidden"></div>
+          <div id="boardScroll" class="board-scroll">
+            <div id="board" class="board"></div>
+          </div>
+          <div class="board-ends">
+            <div class="end-badge" id="endLeft"></div>
+            <div class="pile-badge"><span id="pileCount">0</span> no estoque</div>
+            <div class="end-badge" id="endRight"></div>
+          </div>
+        </div>
+
+        <div id="slotRight" class="player-slot slot-side"></div>
+      </div>
+
+      <div class="game-status">
+        <div id="turnBar" class="turn-bar"></div>
+        <button id="btnRulesGame" class="btn btn-ghost btn-sm">Ver regras</button>
+      </div>
+
+      <div id="timerBar" class="timer-bar hidden">
+        <div id="timerFill" class="timer-fill"></div>
+        <span id="timerSecs" class="timer-secs"></span>
+      </div>
+
+      <div id="controls" class="controls">
+        <button id="btnDraw" class="btn btn-draw hidden">Comprar peca</button>
+        <button id="btnPass" class="btn btn-pass hidden">Passar vez</button>
+      </div>
+
+      <div class="area-hand">
+        <div id="myHand" class="my-hand"></div>
+      </div>
+    </div>
+
+    <div id="modalSide" class="modal hidden">
+      <div class="modal-box">
+        <p>Onde jogar esta peca?</p>
+        <div class="side-btns">
+          <button id="btnSideLeft" class="btn btn-side"><- Esquerda</button>
+          <button id="btnSideRight" class="btn btn-side">Direita -></button>
+        </div>
+        <button id="btnSideCancel" class="btn btn-ghost">Cancelar</button>
+      </div>
+    </div>
+
+    <div id="modalOver" class="modal hidden">
+      <div class="modal-box modal-over">
+        <div id="overEmoji" class="over-emoji"></div>
+        <h2 id="overTitle"></h2>
+        <p id="overLabel" class="over-label"></p>
+        <p id="overReason" class="over-reason"></p>
+
+        <div id="overScores" class="over-scores"></div>
+        <div id="matchBanner" class="match-banner hidden"></div>
+
+        <div class="reveal-title">Maos reveladas</div>
+        <div id="allHands" class="all-hands"></div>
+
+        <div id="countsBox" class="counts-box hidden"></div>
+
+        <div class="over-btns">
+          <button id="btnAgain" class="btn btn-gold hidden">Nova Rodada</button>
+          <p id="waitingNextRound" class="waiting-hint hidden">Aguardando o host iniciar proxima rodada...</p>
+          <button id="btnOverLobby" class="btn btn-ghost">Sair</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalStarter" class="modal hidden">
+      <div class="modal-box starter-box">
+        <h3 id="starterTitle"></h3>
+        <p id="starterText"></p>
+        <div id="starterStatus" class="starter-status"></div>
+        <p id="starterHint" class="starter-hint"></p>
+        <div class="side-btns starter-btns">
+          <button id="btnStarterSelf" class="btn btn-gold">Eu comeco</button>
+          <button id="btnStarterPartner" class="btn btn-outline">Pode comecar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="modalRules" class="modal hidden">
+    <div class="modal-box rules-box">
+      <h3 class="rules-title">Regras do Jogo</h3>
+      <div class="rtabs">
+        <button class="rtab active" data-tab="classic">Classico</button>
+        <button class="rtab" data-tab="baiano">Baiano</button>
+      </div>
+
+      <div id="rulesClassic" class="rules-content">
+        <div class="rule-block">
+          <b>Como funciona</b>
+          <p>De 2 a 4 jogadores, 7 pecas para cada um. Quem tem a maior carroca abre o jogo e deve jogar essa peca primeiro.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batida simples</b>
+          <p>Jogou todas as pecas normalmente. Vale 1 ponto.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batida de carroca</b>
+          <p>A ultima peca jogada e uma dupla. Vale 2 pontos.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batida pela</b>
+          <p>Comprou do estoque e bateu na mesma rodada. Vale 3 pontos.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batida buchuda</b>
+          <p>A ultima peca e o [0|0]. Vale 3 pontos.</p>
+        </div>
+        <div class="rule-block">
+          <b>Jogo travado</b>
+          <p>Ninguem consegue jogar e o estoque acabou. Quem tiver a menor soma de pontos vence.</p>
+        </div>
+      </div>
+
+      <div id="rulesBaiano" class="rules-content hidden">
+        <div class="rule-block">
+          <b>Como funciona</b>
+          <p>Sempre 4 jogadores em 2 duplas, com 7 pecas para cada um. A primeira rodada comeca no [1|1]. Depois disso, a dupla que venceu a rodada decide quem abre a proxima e esse jogador pode iniciar com qualquer peca. A partida vai ate 2 pecas.</p>
+        </div>
+        <div class="rule-block">
+          <b>Corrida de pontos</b>
+          <p>A batida simples segue a corrida de 3, 5 e peca. Cada vitoria avanca o seu placar: 0 vira 3, 3 vira 5, 5 ganha 1 peca e os pontos voltam a 0. Se as duplas empatarem em 3x3, quem ganhou vai pra 5 e o adversario zera.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batidas que valem peca</b>
+          <p>Bater com bucha vale 1 peca direta. Bater de lasquine tambem vale 1 peca direta. Essas batidas nao apagam o placar de pontos atual.</p>
+        </div>
+        <div class="rule-block">
+          <b>Batidas que valem 2 pecas</b>
+          <p>Lasquine presa: ninguem mais tinha os valores das pontas da mesa. Dobrada: o jogador volta a jogar depois da mesa inteira passar e bate na sequencia.</p>
+        </div>
+        <div class="rule-block">
+          <b>Fechar o jogo</b>
+          <p>Fechando, vale a menor mao individual, nao a soma da dupla. Em empate, quem fechou perde. Se fechou e ganhou, vale 1 peca. Se fechou e perdeu, e chorao: a outra dupla ganha 2 pecas.</p>
+        </div>
+        <div class="rule-block">
+          <b>Fechada obrigatoria</b>
+          <p>Quando so existe uma peca jogavel e ela fecha a mesa, vale apenas uma batida simples. Se essa fechada obrigatoria for com bucha, recebe o nome de fechada folgando bucha.</p>
+        </div>
+      </div>
+
+      <button id="btnCloseRules" class="btn btn-gold">Entendi!</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+    <defs>
+      <linearGradient id="dg-piece" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="#2c2c2c"/>
+        <stop offset="55%" stop-color="#1c1c1c"/>
+        <stop offset="100%" stop-color="#131313"/>
+      </linearGradient>
+      <linearGradient id="dg-sheen" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="white" stop-opacity="0.07"/>
+        <stop offset="60%" stop-color="white" stop-opacity="0"/>
+      </linearGradient>
+      <radialGradient id="dg-dot" cx="35%" cy="30%" r="65%" gradientUnits="objectBoundingBox">
+        <stop offset="0%" stop-color="#f5ead0"/>
+        <stop offset="100%" stop-color="#be9e5a"/>
+      </radialGradient>
+    </defs>
+  </svg>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
