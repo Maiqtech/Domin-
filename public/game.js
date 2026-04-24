@@ -615,10 +615,14 @@ function openRules(tab = S.config.mode || 'classic') {
 
 socket.on('connect', () => {
   S.myId = socket.id;
+  const session = JSON.parse(sessionStorage.getItem('domino_s') || 'null');
+  if (session) { S.myName = session.name; S.roomCode = session.code; socket.emit('rejoin', session); }
 });
+socket.on('rejoin-fail', () => sessionStorage.removeItem('domino_s'));
 socket.on('room-created', ({ code }) => {
   S.roomCode = code;
   S.isHost = true;
+  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, code }));
   S.players = [{ id: S.myId, name: S.myName, score: 0 }];
   $('displayCode').textContent = code;
   showScreen('waiting');
@@ -629,6 +633,7 @@ socket.on('room-created', ({ code }) => {
 socket.on('room-joined', ({ code }) => {
   S.roomCode = code;
   S.isHost = false;
+  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, code }));
   $('displayCode').textContent = code;
   showScreen('waiting');
   $('configSection').classList.add('hidden');
@@ -752,6 +757,7 @@ $('btnAgain').addEventListener('click', () => {
 });
 $('btnOverLobby').addEventListener('click', () => {
   $('modalOver').classList.add('hidden');
+  sessionStorage.removeItem('domino_s');
   showScreen('lobby');
 });
 

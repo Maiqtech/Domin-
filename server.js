@@ -589,6 +589,25 @@ io.on('connection', socket => {
     emitRoomUpdate(code);
   });
 
+  socket.on('rejoin', ({ code, name }) => {
+    const room = rooms[code];
+    if (!room) return socket.emit('rejoin-fail');
+    const player = room.players.find(p => p.name === name);
+    if (!player) return socket.emit('rejoin-fail');
+    const oldId = player.id;
+    player.id = socket.id;
+    socket.data.code = code;
+    socket.data.name = name;
+    socket.join(code);
+    if (room.host === oldId) room.host = socket.id;
+    if (room.game?.started) {
+      broadcastState(room);
+    } else {
+      socket.emit('room-joined', { code });
+      emitRoomUpdate(code);
+    }
+  });
+
   socket.on('set-config', ({ mode, targetPecas, timePerTurn }) => {
     const room = rooms[socket.data.code];
     if (!room || room.host !== socket.id) return;
