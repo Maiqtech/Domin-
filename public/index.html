@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Domino Online</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -35,6 +35,11 @@
       <h2>Sala <span id="displayCode" class="code-badge"></span></h2>
       <button id="btnCopy" class="btn btn-outline btn-sm">Copiar codigo</button>
       <div id="waitingPlayers" class="waiting-players"></div>
+
+      <div class="waiting-avatar-section">
+        <div class="cfg-label">Seu personagem</div>
+        <div id="waitingAvatarGrid" class="avatar-grid waiting-avatar-grid"></div>
+      </div>
 
       <div id="configSection" class="config-section hidden">
         <div class="config-label">Modo de jogo</div>

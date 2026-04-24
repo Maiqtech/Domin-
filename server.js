@@ -510,7 +510,7 @@ function broadcastState(room) {
       currentPlayerId: currentPlayer?.id || null,
       currentPlayerName: currentPlayer?.name || null,
       pileCount: game.pile.length,
-      players: players.map(p => ({ id: p.id, name: p.name, handCount: p.hand.length, team: p.team, score: p.score || 0 })),
+      players: players.map(p => ({ id: p.id, name: p.name, avatar: p.avatar || '?', handCount: p.hand.length, team: p.team, score: p.score || 0 })),
       requiredFirst: game.requiredFirst,
       starterDecision: getStarterDecisionPayload(room, player.id),
       config,
@@ -541,6 +541,7 @@ function endRound(room, eventName, data) {
   data.players = room.players.map(player => ({
     id: player.id,
     name: player.name,
+    avatar: player.avatar || '?',
     score: player.score || 0,
     team: player.team,
     handCount: player.hand.length
@@ -552,19 +553,19 @@ function emitRoomUpdate(code) {
   const room = rooms[code];
   if (!room) return;
   io.to(code).emit('room-update', {
-    players: room.players.map(player => ({ id: player.id, name: player.name, score: player.score || 0 })),
+    players: room.players.map(player => ({ id: player.id, name: player.name, avatar: player.avatar || '?', score: player.score || 0 })),
     config: room.config,
     hostId: room.host
   });
 }
 
 io.on('connection', socket => {
-  socket.on('create-room', ({ name }) => {
+  socket.on('create-room', ({ name, avatar }) => {
     const code = generateCode();
     rooms[code] = {
       code,
       host: socket.id,
-      players: [{ id: socket.id, name, hand: [], team: 0, score: 0 }],
+      players: [{ id: socket.id, name, avatar: avatar || '?', hand: [], team: 0, score: 0 }],
       config: { mode: 'classic', targetPecas: 6, timePerTurn: 0 },
       lastRoundWinnerTeam: null,
       game: null
@@ -576,12 +577,15 @@ io.on('connection', socket => {
     emitRoomUpdate(code);
   });
 
-  socket.on('join-room', ({ code, name }) => {
+  socket.on('join-room', ({ code, name, avatar }) => {
     const room = rooms[code];
     if (!room) return socket.emit('error', { msg: 'Sala nao encontrada.' });
     if (room.game?.started) return socket.emit('error', { msg: 'Jogo ja em andamento.' });
     if (room.players.length >= 4) return socket.emit('error', { msg: 'Sala cheia.' });
-    room.players.push({ id: socket.id, name, hand: [], team: room.players.length, score: 0 });
+    const chosenAvatar = avatar || '?';
+    const takenBy = chosenAvatar !== '?' ? room.players.find(p => p.avatar === chosenAvatar) : null;
+    if (takenBy) return socket.emit('error', { msg: `${chosenAvatar} ja foi escolhido por ${takenBy.name}. Escolha outro personagem.` });
+    room.players.push({ id: socket.id, name, avatar: chosenAvatar, hand: [], team: room.players.length, score: 0 });
     socket.join(code);
     socket.data.code = code;
     socket.data.name = name;
@@ -615,6 +619,19 @@ io.on('connection', socket => {
     if (targetPecas !== undefined) room.config.targetPecas = Math.max(1, Math.min(20, parseInt(targetPecas, 10) || 6));
     if (timePerTurn !== undefined) room.config.timePerTurn = Math.max(0, Math.min(120, parseInt(timePerTurn, 10) || 0));
     if (mode !== undefined) room.lastRoundWinnerTeam = null;
+    emitRoomUpdate(room.code);
+  });
+
+  socket.on('change-avatar', ({ avatar }) => {
+    const room = rooms[socket.data.code];
+    if (!room || room.game?.started) return;
+    const validAvatars = ['🦁','🐯','🐻','🦊','🐺','🐸','🐙','🦅','🦋','🐲','🦄','🐬','🦈','🦉','🐧','🦚'];
+    if (!validAvatars.includes(avatar)) return socket.emit('error', { msg: 'Personagem invalido.' });
+    const takenBy = room.players.find(p => p.id !== socket.id && p.avatar === avatar);
+    if (takenBy) return socket.emit('error', { msg: `${avatar} ja foi escolhido por ${takenBy.name}.` });
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+    player.avatar = avatar;
     emitRoomUpdate(room.code);
   });
 

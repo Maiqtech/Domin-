@@ -1,7 +1,10 @@
+const AVATARS = ['🦁','🐯','🐻','🦊','🐺','🐸','🐙','🦅','🦋','🐲','🦄','🐬','🦈','🦉','🐧','🦚'];
+
 const socket = io();
 const S = {
   myId: null,
   myName: null,
+  myAvatar: '?',
   roomCode: null,
   isHost: false,
   hand: [],
@@ -232,13 +235,19 @@ function renderSlot(slotId, player, pos) {
   const isActive = player.id === S.currentPlayerId;
   const isSide = pos === 'left' || pos === 'right';
 
+  if (player.avatar) {
+    const emojiEl = document.createElement('div');
+    emojiEl.style.cssText = 'font-size:2rem;line-height:1;';
+    emojiEl.textContent = player.avatar;
+    slot.appendChild(emojiEl);
+  }
   const name = document.createElement('div');
   name.className = `opp-name${isActive ? ' active-player pulsing' : ''}`;
   name.textContent = player.name;
   slot.appendChild(name);
 
   const meta = document.createElement('div');
-  meta.style.cssText = 'font-size:.65rem;color:var(--gold);font-weight:700;';
+  meta.style.cssText = 'font-size:.8rem;color:var(--gold);font-weight:700;';
   meta.textContent = S.config.mode === 'baiano' ? `time ${player.team + 1}` : `${player.score || 0}pt`;
   slot.appendChild(meta);
 
@@ -569,7 +578,7 @@ function renderWaitingPlayers(players) {
     row.className = 'player-row';
     const avatar = document.createElement('div');
     avatar.className = `avatar av${idx}`;
-    avatar.textContent = player.name[0].toUpperCase();
+    avatar.textContent = player.avatar || player.name[0].toUpperCase();
     row.appendChild(avatar);
 
     const name = document.createElement('span');
@@ -594,6 +603,30 @@ function renderWaitingPlayers(players) {
   });
   updateWaitingHint(players.length);
 }
+function renderWaitingAvatarGrid(players) {
+  const grid = $('waitingAvatarGrid');
+  if (!grid) return;
+  const takenMap = {};
+  players.forEach(p => { if (p.id !== S.myId) takenMap[p.avatar] = p.name; });
+  grid.innerHTML = '';
+  AVATARS.forEach(av => {
+    const opt = document.createElement('span');
+    opt.className = 'av-opt';
+    opt.textContent = av;
+    if (av === S.myAvatar) opt.classList.add('selected');
+    if (takenMap[av]) {
+      opt.classList.add('taken');
+      opt.title = `${takenMap[av]} ja escolheu`;
+    } else {
+      opt.addEventListener('click', () => {
+        S.myAvatar = av;
+        renderWaitingAvatarGrid(S.players);
+        socket.emit('change-avatar', { avatar: av });
+      });
+    }
+    grid.appendChild(opt);
+  });
+}
 function updateConfigUI(cfg) {
   document.querySelectorAll('.mode-btn').forEach(button => button.classList.toggle('active', button.dataset.mode === cfg.mode));
   $('baianoConfig').classList.toggle('hidden', cfg.mode !== 'baiano');
@@ -616,14 +649,17 @@ function openRules(tab = S.config.mode || 'classic') {
 socket.on('connect', () => {
   S.myId = socket.id;
   const session = JSON.parse(sessionStorage.getItem('domino_s') || 'null');
-  if (session) { S.myName = session.name; S.roomCode = session.code; socket.emit('rejoin', session); }
+  if (session) { S.myName = session.name; S.myAvatar = session.avatar || S.myAvatar; S.roomCode = session.code; socket.emit('rejoin', session); }
 });
-socket.on('rejoin-fail', () => sessionStorage.removeItem('domino_s'));
+socket.on('rejoin-fail', () => {
+  sessionStorage.removeItem('domino_s');
+  toast('Sala nao encontrada. Crie ou entre em uma nova.', 'err');
+});
 socket.on('room-created', ({ code }) => {
   S.roomCode = code;
   S.isHost = true;
-  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, code }));
-  S.players = [{ id: S.myId, name: S.myName, score: 0 }];
+  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, avatar: S.myAvatar, code }));
+  S.players = [{ id: S.myId, name: S.myName, avatar: S.myAvatar, score: 0 }];
   $('displayCode').textContent = code;
   showScreen('waiting');
   $('configSection').classList.remove('hidden');
@@ -633,7 +669,7 @@ socket.on('room-created', ({ code }) => {
 socket.on('room-joined', ({ code }) => {
   S.roomCode = code;
   S.isHost = false;
-  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, code }));
+  sessionStorage.setItem('domino_s', JSON.stringify({ name: S.myName, avatar: S.myAvatar, code }));
   $('displayCode').textContent = code;
   showScreen('waiting');
   $('configSection').classList.add('hidden');
@@ -642,11 +678,14 @@ socket.on('room-joined', ({ code }) => {
 });
 socket.on('room-update', ({ players, config, hostId }) => {
   S.players = players;
+  const me = players.find(p => p.id === S.myId);
+  if (me?.avatar) S.myAvatar = me.avatar;
   if (config) {
     S.config = config;
     updateConfigUI(config);
   }
   renderWaitingPlayers(players);
+  renderWaitingAvatarGrid(players);
   S.isHost = hostId === S.myId;
   $('configSection').classList.toggle('hidden', !S.isHost);
   $('btnRulesGuest').classList.toggle('hidden', S.isHost);
@@ -724,7 +763,7 @@ $('btnCreate').addEventListener('click', () => {
   if (!name) return $('lobbyErr').textContent = 'Digite seu apelido.';
   $('lobbyErr').textContent = '';
   S.myName = name;
-  socket.emit('create-room', { name });
+  socket.emit('create-room', { name, avatar: S.myAvatar });
 });
 $('btnJoin').addEventListener('click', doJoin);
 $('inputCode').addEventListener('keydown', event => event.key === 'Enter' && doJoin());
@@ -736,7 +775,7 @@ function doJoin() {
   if (code.length !== 4) return $('lobbyErr').textContent = 'Codigo deve ter 4 letras.';
   $('lobbyErr').textContent = '';
   S.myName = name;
-  socket.emit('join-room', { name, code });
+  socket.emit('join-room', { name, code, avatar: S.myAvatar });
 }
 
 $('btnCopy').addEventListener('click', () => {
